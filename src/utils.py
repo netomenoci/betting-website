@@ -1,0 +1,79 @@
+from typing import List, Tuple
+
+class Order:
+
+    def __init__(self, market_id=None, runner_id=None, price=None, size_remaining=0, size_matched=0, side=None, bet_id=None, **kwargs):
+        self.market_id = market_id
+        self.runner_id = runner_id
+        self.price = price
+        self.size_remaining = size_remaining
+        self.size_matched = size_matched
+        self.side = side
+        self.bet_id = bet_id
+        self.__dict__.update(kwargs)
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+    def __eq__(self, other):
+        return self.price == other.price and self.size_remaining == other.size_remaining and self.side == other.side and \
+               self.market_id == other.market_id and self.runner_id == other.runner_id
+
+class Market:
+
+    def __init__(self, market_id, start_time, volume_matched, runners):
+        self.market_id = market_id
+        self.start_time = start_time
+        self.volume_matched = volume_matched
+        self.runners = runners
+
+
+class Runner:
+
+    def __init__(self, runner_id, available_to_back, available_to_lay):
+        self.runner_id = runner_id
+        self.available_to_back = available_to_back
+        self.available_to_lay = available_to_lay
+
+
+def get_login_details(path):
+    f = open(path, "r")
+    lines = f.readlines()
+    f.close()
+    return [line.strip() for line in lines]
+
+
+def calc_matched_amount(matched_orders_market, selection_id, side):
+    matched_orders_by_selection_and_side = matched_orders_market.get(selection_id, {}).get(side, [])
+    return sum([order.size_matched for order in matched_orders_by_selection_and_side])
+
+def split_matched_and_open(current_orders):
+
+    open_orders = {}
+    matched_orders = {}
+
+    for current_order in current_orders:
+
+        market_id = current_order.market_id
+        runner_id = current_order.runner_id
+        side = current_order.side.upper()
+
+        if current_order.size_remaining > 0:
+
+            if market_id not in open_orders:
+                open_orders[market_id] = {}
+            if runner_id not in open_orders[market_id]:
+                open_orders[market_id][runner_id] = []
+
+            open_orders[market_id][runner_id].append(current_order)
+
+        if current_order.size_matched > 0:
+
+            if market_id not in matched_orders:
+                matched_orders[market_id] = {}
+            if runner_id not in matched_orders[market_id]:
+                matched_orders[market_id][runner_id] = {'BACK': [], 'LAY': []}
+
+            matched_orders[market_id][runner_id][side].append(current_order)
+
+    return matched_orders, open_orders
