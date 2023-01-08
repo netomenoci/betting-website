@@ -98,7 +98,8 @@ class Betfair(Exchange):
                               lay_prices=book_lay_prices, lay_sizes=book_lay_sizes, selection_ids=selection_ids)
 
     #@retry(wait=wait_fixed(5), stop=stop_after_attempt(5))
-    def get_matched_and_open_orders(self):
+
+    def get_current_orders(self):
         count = 0
         current_orders = []
         while True:
@@ -107,6 +108,9 @@ class Betfair(Exchange):
             if len(current_orders_batch) < 1000:
                 break
         current_orders = [self.normalize_order(order) for order in current_orders]
+        return current_orders
+    def get_matched_and_open_orders(self):
+        current_orders = self.get_current_orders()
         return split_matched_and_open(current_orders)
 
     #@retry(wait=wait_fixed(5), stop=stop_after_attempt(5))
@@ -119,20 +123,27 @@ class Betfair(Exchange):
         return markets
 
     #@retry(wait=wait_fixed(5), stop=stop_after_attempt(5))
-    def _get_market_catalogue(self, event_type_id, market_type_code, min_volume):
-        filter = market_filter(event_type_ids=[event_type_id], market_type_codes=[market_type_code])
+    def _get_market_catalogue(self, event_type_id, market_type_code, min_volume, market_ids):
+        if market_ids is None:
+            filter = market_filter(event_type_ids=[event_type_id], market_type_codes=[market_type_code])
+        else:
+            filter = market_filter(market_ids=market_ids)
         market_catalogue = self.trading.betting.list_market_catalogue(filter, lightweight=True, max_results=1000, market_projection=['MARKET_START_TIME'])
         return {x['marketId']: x for x in market_catalogue if x['totalMatched'] > min_volume}
 
-    def get_market_catalogue(self, event_type_ids, market_type_codes, min_volume):
+    def get_market_catalogue(self, event_type_ids, market_type_codes, min_volume, market_ids):
         market_catalogue = {}
-        for event_type_id in event_type_ids:
-            for market_type_code in market_type_codes:
-                market_catalogue.update(self._get_market_catalogue(event_type_id, market_type_code, min_volume))
-        return {k: v for k, v in market_catalogue.items() if v['totalMatched'] > min_volume}
+        if market_ids is not None:
+            market_catalogue.update(self._get_market_catalogue(event_type_id = None, market_type_code = None, min_volume = 0, market_ids = market_ids))
+            return market_catalogue
+        else:
+            for event_type_id in event_type_ids:
+                for market_type_code in market_type_codes:
+                    market_catalogue.update(self._get_market_catalogue(event_type_id, market_type_code, min_volume))
+            return {k: v for k, v in market_catalogue.items() if v['totalMatched'] > min_volume}
 
-    def get_markets(self, event_type_ids, market_type_codes, min_volume=1000):
-        market_catalogue = self.get_market_catalogue(event_type_ids, market_type_codes, min_volume)
+    def get_markets(self, event_type_ids, market_type_codes, min_volume=1000, market_ids = None):
+        market_catalogue = self.get_market_catalogue(event_type_ids, market_type_codes, min_volume, market_ids)
         market_books = self.get_market_books(list(market_catalogue.keys()))
         markets = []
         for market in market_books[:]:

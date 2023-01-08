@@ -1,6 +1,5 @@
 import sys
 import os
-from unittest import runner
 
 # getting the name of the directory
 # where the this file is present.
@@ -14,16 +13,15 @@ sys.path.append(parent)
 
 import streamlit as st
 from src.exchanges.betfair import Betfair
+from src.utils import split_matched_and_open
+from src.website_utils import get_selection_stats, get_market_stats
 import pandas as pd
-from datetime import datetime
-import pytz
-import time
-import matplotlib.pyplot as plt
+
+st.set_page_config(page_title="CRBMNC - BETTING HEDGE FUND", page_icon="₿", layout="wide")
+st.title("CRBMNC - BETTING HEDGE FUND")
 
 trading = Betfair()
 trading.login()
-st.set_page_config(page_title="CRBMNC - BETTING HEDGE FUND", page_icon="₿", layout="wide")
-st.title("CRBMNC - BETTING HEDGE FUND")
 
 #
 # # Importando o objecto Fundo
@@ -32,25 +30,57 @@ st.title("CRBMNC - BETTING HEDGE FUND")
 #     return Fund()
 # fundo = get_fund_object()
 
+
+# @st.cache(ttl=60 * 2)
+def update_stats():
+    data_load_state = st.text("Loading data from exchange...")
+    account_funds = trading.trading.account.get_account_funds()
+    available_to_bet_balance = account_funds.available_to_bet_balance
+
+    orders = trading.get_current_orders()
+    matched_orders, open_orders = split_matched_and_open(orders)
+
+    selection_stats = get_selection_stats(orders)
+    market_id = pd.Series(selection_stats.index).apply(lambda x: x[0])
+    selection_id = pd.Series(selection_stats.index).apply(lambda x: x[1])
+    selection_stats.reset_index(inplace= True, drop = True)
+    selection_stats['market_id'] = market_id
+    selection_stats['selection_id'] = selection_id
+
+    market_ids_matched = list(selection_stats["market_id"].unique())
+
+    market_stats = get_market_stats(trading=trading, market_ids=market_ids_matched, matched_orders=matched_orders,
+                                    open_orders=open_orders)
+    market_stats.index.name = "market_id"
+    market_stats.reset_index(inplace=True,drop=False)
+
+    expected_pnl_before = market_stats.expected_pnl_before
+    expected_pnl_after = market_stats.expected_pnl_after
+    data_load_state.text(f"Finished loading data from the exchange!")
+
+    return selection_stats, market_stats,  available_to_bet_balance, expected_pnl_before, expected_pnl_after
+
+
+selection_stats, market_stats,  available_to_bet_balance, expected_pnl_before, expected_pnl_after = update_stats()
+
 # Total Balance
-st.subheader("Orders")
+st.subheader(f"Available to bet funds: {available_to_bet_balance}")
+st.subheader(f"Expected pnl before cashout: {round(expected_pnl_before.sum(),2)}")
+st.subheader(f"Expected pnl after cashout: {round(expected_pnl_after.sum(),2)}")
+st.subheader(f"Hit ratio (before cashout): {100*round((expected_pnl_before > 0).mean(),3)}%")
+st.subheader(f"Hit ratio (after cashout): {100*round((expected_pnl_after > 0).mean(),3)}%")
 
-@st.cache(ttl=60 * 2)
-def update_orders():
-    matched_orders, open_orders = trading.get_matched_and_open_orders()
-    return matched_orders, open_orders
 
 
-matched_orders, open_orders = update_orders()
-f"Matched orders"
-matched_orders
+
+f"Selection stats"
+selection_stats
 
 f"-------------------"
 
-f"Open orders"
-open_orders
+f"Market Stats"
+market_stats
 
-# total_balance = balance["value"].sum()
 #
 # f"Total balance in {round(total_balance, 2)} {ASSET_QUOTE} evaluated at {now_brl} of Brazil time"
 #
@@ -111,5 +141,5 @@ open_orders
 #     kpi1, kpi2 = st.columns(2)
 #     kpi1.metric(label="Quantity of unique currencies being traded ", value=f"{qty_currencies}")
 
-time.sleep(60 * 10)
-raise st.experimental_rerun()
+# time.sleep(60 * 10)
+# raise st.experimental_rerun()

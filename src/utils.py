@@ -1,5 +1,4 @@
-from typing import List, Tuple
-
+from typing import List, Dict, Literal, Tuple
 class Order:
 
     def __init__(self, market_id=None, runner_id=None, price=None, size_remaining=0, size_matched=0, side=None, bet_id=None, **kwargs):
@@ -77,3 +76,28 @@ def split_matched_and_open(current_orders):
             matched_orders[market_id][runner_id][side].append(current_order)
 
     return matched_orders, open_orders
+
+def get_pnl_outcomes(matched_orders_market : Dict[int, List[Order]], selection_ids : List[int]) -> Dict[int, float]:
+    """
+    The get_pnl_outcomes function takes in a dictionary of matched orders and returns the pnl for each selection.
+    The function also takes in a list of selections to be considered, which is used to determine if there are complementary positions on other selections
+    The function will return only one key-value pair with the total pnl for that selection.
+
+    :param matched_orders_market:Dict[str: Store the matched orders for each selection
+    :param List[Order]]: Store the matched orders for each selection
+    :param selection_ids:List[str]: Specify the selection_ids of the selections we want to compute the pnl for
+    :return: A dictionary with the pnl of each selection and a complementary pnl if there is only one selection
+    """
+    pnl_selections = {}
+    for selection_i in selection_ids:
+        pnl_selection = 0
+        for selection_j, back_lay_orders in matched_orders_market.items():
+            if selection_i == selection_j:  # position on the winning selection
+                pnl_selection += sum([(x.price - 1) * x.size_matched for x in back_lay_orders["BACK"]]) - sum([(x.price - 1) * x.size_matched for x in back_lay_orders["LAY"]])
+            else:  # Winning selection diffrent from position selection or single selection
+                pnl_selection += sum(x.size_matched for x in back_lay_orders["LAY"]) - sum(x.size_matched for x in back_lay_orders["BACK"])
+        pnl_selections[selection_i] = pnl_selection
+    if len(selection_ids) == 1:
+        positions_selection = matched_orders_market[selection_ids[0]]
+        pnl_selections["complementary"] = sum(x.size_matched for x in positions_selection["LAY"]) - sum(x.size_matched for x in positions_selection["BACK"])
+    return pnl_selections
