@@ -56,12 +56,16 @@ def update_stats():
 
 orders_df, selection_stats, market_stats,  available_to_bet_balance, expected_pnl_before, expected_pnl_after = update_stats()
 
+
 # Total Balance
 st.subheader(f"Available to bet funds: {available_to_bet_balance}")
+st.subheader(f"Total LAY matched: {round(selection_stats.LAY_SIZE_MATCHED.sum(),2)}")
+st.subheader(f"Total BACK matched: {round(selection_stats.BACK_SIZE_MATCHED.sum(),2)}")
 st.subheader(f"Expected pnl before cashout: {round(expected_pnl_before.sum(),2)}")
 st.subheader(f"Expected pnl after cashout: {round(expected_pnl_after.sum(),2)}")
 st.subheader(f"Hit ratio (before cashout): {100*round((expected_pnl_before > 0).mean(),3)}%")
 st.subheader(f"Hit ratio (after cashout): {100*round((expected_pnl_after > 0).mean(),3)}%")
+
 
 
 f"Selection stats"
