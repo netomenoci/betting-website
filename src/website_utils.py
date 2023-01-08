@@ -43,8 +43,7 @@ def get_market_stats(trading, market_ids: List[str], matched_orders, open_orders
     return market_stats
 
 
-def get_selection_stats(orders) -> pd.DataFrame:
-    orders_df = pd.DataFrame([order.__dict__ for order in orders])
+def get_selection_stats(orders_df) -> pd.DataFrame:
     matched_orders_df = orders_df[orders_df["size_matched"] != 0]
     size_matched = matched_orders_df.groupby(["market_id", "runner_id", "side"])["size_matched"].sum().rename("size_matched").to_frame()
     size_matched = size_matched.reset_index(level = 2)
