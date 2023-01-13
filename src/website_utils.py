@@ -26,16 +26,22 @@ def get_market_stats(trading, market_ids: List[str], matched_orders, open_orders
             max_std_allowed=1
         )
 
-        hours_to_start = (market.start_time - time.time()) / 3600
+        hours_to_start = round((market.start_time - time.time()) / 3600,2)
         cashout_output = cashout._get_neutralizer_orders_retry(max_std_allowed=1)
-        expected_pnl_before = cashout_output.expected_pnl_before
-        expected_pnl_after = cashout_output.expected_pnl_after
-        worst_outcome_before = cashout_output.worst_outcome_before
 
-        market_stats["expected_pnl_before"] = round(expected_pnl_before, 2)
-        market_stats["expected_pnl_after"] = round(expected_pnl_after, 2)
-        market_stats["worst_outcome_before"] = round(worst_outcome_before, 2)
-        market_stats["hours_to_start"] = round(hours_to_start, 2)
+        if cashout_output is not None:
+            expected_pnl_before = round(cashout_output.expected_pnl_before,2)
+            expected_pnl_after = round(cashout_output.expected_pnl_after,2)
+            worst_outcome_before = round(cashout_output.worst_outcome_before, 2)
+        else:
+            expected_pnl_before = None
+            expected_pnl_after = None
+            worst_outcome_before = None
+
+        market_stats["expected_pnl_before"] = expected_pnl_before
+        market_stats["expected_pnl_after"] = expected_pnl_after
+        market_stats["worst_outcome_before"] = worst_outcome_before
+        market_stats["hours_to_start"] = hours_to_start
         stats[market.market_id] = market_stats
 
     market_stats = pd.DataFrame.from_records(stats).T

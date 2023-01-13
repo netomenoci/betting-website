@@ -18,7 +18,7 @@ class CashoutOutput:
 
 class Cashout:
     def __init__(self, market_book : BookNormalized, matched_orders : Dict[int, List[Order]],
-                 open_orders: Dict[int, List[Order]], mode : Literal["maker", "taker"], constrain_by_volume : bool, max_std_allowed : float = 0.05):
+                 open_orders: Dict[int, List[Order]], mode : Literal["maker", "taker"], constrain_by_volume : bool = True, max_std_allowed : float = 0.05):
         self.market_book = market_book
         self.matched_orders = self.fill_missing_selections(orders = matched_orders, selection_ids=self.market_book.selection_ids)
         self.open_orders = open_orders
@@ -54,7 +54,7 @@ class Cashout:
     def _get_neutralizer_orders_retry(self, max_std_allowed) -> List[Order]:
         if max_std_allowed > 10:
             print(f"CASHOUT - max_std_allowed is above 10 {max_std_allowed}. Returning no orders to cashout")
-            return []
+            return None
         try:
             return self._get_neutralizer_orders(max_std_allowed=max_std_allowed)
         except Exception as e:
@@ -62,7 +62,7 @@ class Cashout:
             return self._get_neutralizer_orders_retry(max_std_allowed=2*max_std_allowed)
 
 
-    def _get_neutralizer_orders(self, max_std_allowed = None) -> List[Order]:
+    def _get_neutralizer_orders(self, max_std_allowed = None) -> CashoutOutput:
         """
         The _get_neutralizer_orders_single_selection function is a helper function that returns the orders to neutralize the position of in a market.
         It does that by maximizin the expected pnl subject to constraints on the standard deviation of the selections outcomes.

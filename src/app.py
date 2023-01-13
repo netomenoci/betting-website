@@ -16,15 +16,20 @@ from src.exchanges.betfair import Betfair
 from src.utils import split_matched_and_open
 from src.website_utils import get_selection_stats, get_market_stats
 import pandas as pd
+import time
 
 st.set_page_config(page_title="CRBMNC - BETTING HEDGE FUND", page_icon="₿", layout="wide")
 st.title("CRBMNC - BETTING HEDGE FUND")
 
 trading = Betfair()
 trading.login()
+counter = 0
 
-# @st.cache(ttl=60 * 2)
+# @st.cache(ttl=60)
 def update_stats():
+    global counter
+    counter += 1
+    print(f"Stats have been updated {counter} times")
     data_load_state = st.text("Loading data from exchange...")
     account_funds = trading.trading.account.get_account_funds()
     available_to_bet_balance = account_funds.available_to_bet_balance
@@ -83,3 +88,6 @@ orders_market = orders_df[orders_df["market_id"] == market_id_filter]
 with placeholder.container():
     st.subheader("Orders per market")
     st.write(orders_market)
+
+time.sleep(60*5)
+raise st.experimental_rerun()

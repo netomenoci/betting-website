@@ -107,6 +107,7 @@ class Betfair(Exchange):
             current_orders.extend(current_orders_batch)
             if len(current_orders_batch) < 1000:
                 break
+            count += 1
         current_orders = [self.normalize_order(order) for order in current_orders]
         return current_orders
     def get_matched_and_open_orders(self):
