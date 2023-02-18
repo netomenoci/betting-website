@@ -60,33 +60,43 @@ def update_stats():
 
 orders_df, selection_stats, market_stats,  available_to_bet_balance, expected_pnl_before, expected_pnl_after = update_stats()
 
+account_stats = {
+    "Available to bet" : round(available_to_bet_balance, 2),
+    "Total matched LAY" :  round(selection_stats.LAY_SIZE_MATCHED.sum(),2),
+    "Total BACK matched" : round(selection_stats.BACK_SIZE_MATCHED.sum(),2),
+    "Expected pnl before cashout" : round(expected_pnl_before.sum(),2),
+    "Expected pnl after cashout" : round(expected_pnl_after.sum(),2),
+    "Hit ratio (before cashout) %" : 100*round((expected_pnl_before > 0).mean(),3),
+    "Hit ratio (after cashout) %" : 100*round((expected_pnl_after > 0).mean(),3)
+}
 
-# Total Balance
-st.subheader(f"Available to bet funds: {available_to_bet_balance}")
-st.subheader(f"Total LAY matched: {round(selection_stats.LAY_SIZE_MATCHED.sum(),2)}")
-st.subheader(f"Total BACK matched: {round(selection_stats.BACK_SIZE_MATCHED.sum(),2)}")
-st.subheader(f"Expected pnl before cashout: {round(expected_pnl_before.sum(),2)}")
-st.subheader(f"Expected pnl after cashout: {round(expected_pnl_after.sum(),2)}")
-st.subheader(f"Hit ratio (before cashout): {100*round((expected_pnl_before > 0).mean(),3)}%")
-st.subheader(f"Hit ratio (after cashout): {100*round((expected_pnl_after > 0).mean(),3)}%")
+f"Account Stats"
+st.write("Stats", account_stats)
 
-
-
-f"Selection stats"
-selection_stats
+f"Market Stats"
+# Display the market stats dataframe
+st.dataframe(market_stats)
 
 f"-------------------"
 
-f"Market Stats"
-market_stats
+filtered_dataframes = {}
+for market_id in market_stats['market_id'].unique():
+    filtered_selection_stats = selection_stats[selection_stats['market_id'] == market_id]
+    filtered_orders_df = orders_df[orders_df['market_id'] == market_id]
+    filtered_dataframes[market_id] = {'selection_stats': filtered_selection_stats, 'orders_df': filtered_orders_df}
+
+def filter_dataframes(market_id):
+    f"Selection stats"
+    st.write(filtered_dataframes[market_id]['selection_stats'])
+    f"Market orders"
+    st.write(filtered_dataframes[market_id]['orders_df'])
 
 
 market_id_filter = st.selectbox("Select the market_id", pd.unique(orders_df["market_id"]))
 placeholder = st.empty()
-orders_market = orders_df[orders_df["market_id"] == market_id_filter]
 with placeholder.container():
-    st.subheader("Orders per market")
-    st.write(orders_market)
+    st.subheader(f"Filtered for {market_id_filter}")
+    filter_dataframes(market_id_filter)
 
-time.sleep(60*5)
-raise st.experimental_rerun()
+# time.sleep(60*5)
+# raise st.experimental_rerun()
